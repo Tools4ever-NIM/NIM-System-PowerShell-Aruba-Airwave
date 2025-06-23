@@ -1,3 +1,4 @@
+
 #
 # Aruba Airwave.ps1 - Aruba Airwave
 #
@@ -21,8 +22,47 @@ $Log_MaskableKeys = @(
 )
 
 $Properties = @{
+    AmpStat = @(
+                @{ name = 'alerts';           										options = @('default')} 
+                @{ name = 'audit_disabled';           									options = @('default')}    
+                @{ name = 'client_count';           									options = @('default')}    
+                @{ name = 'configuration_unknown';           									options = @('default')}
+                @{ name = 'down';           								options = @('default')}
+                @{ name = 'down_wired';           								options = @('default')}
+                @{ name = 'down_wireless';           							    options = @('default')}
+                @{ name = 'mismatched';           							    options = @('default')}
+                @{ name = 'name';           						        options = @('default','key')}
+                @{ name = 'new_count';           						    options = @('default')}
+                @{ name = 'rogue';           						    options = @('default')}
+                @{ name = 'severe_alerts';           							options = @('default')}
+                @{ name = 'up';           						    options = @('default')}
+                @{ name = 'up_wired';           						    options = @('default')}
+                @{ name = 'up_wireless';           						    options = @('default')}
+                @{ name = 'vpn_all_users';           						    options = @('default')}
+                @{ name = 'vpn_count';           						    options = @('default')}
+                @{ name = 'vpn_bandwidth_in';           						    options = @('default')}
+                @{ name = 'vpn_bandwidth_out';           						    options = @('default')}
+    )
+    ApBssidList = @(
+                @{ name = 'id';           										options = @('default','key')}             
+                @{ name = 'name';           						        options = @('default')}
+                @{ name = 'group_id';           						    options = @('default')}
+                @{ name = 'group_name';           						    options = @('default')}
+    )
+    ApDetail = @(
+                @{ name = 'id';           										options = @('default','key')}             
+                @{ name = 'ap_folder';           						        options = @('default')}
+                @{ name = 'ap_group';           						    options = @('default')}
+                @{ name = 'device_config_name';           						    options = @('default')}
+                @{ name = 'is_remote_ap';           						    options = @('default')}
+                @{ name = 'is_up';           						    options = @('default')}
+                @{ name = 'lan_mac';           						    options = @('default')}
+                @{ name = 'snmp_uptime';           						    options = @('default')}
+                @{ name = 'interface';           						    options = @('default')}
+    )
     ApList = @(
                 @{ name = 'id';           										options = @('default','key')} 
+                @{ name = 'client_count';           									options = @('default')}    
                 @{ name = 'controller_id';           									options = @('default')}    
                 @{ name = 'device_category';           									options = @('default')}    
                 @{ name = 'firmware';           									options = @('default')}
@@ -48,13 +88,32 @@ $Properties = @{
                 @{ name = 'radio';           						    options = @('default')}
                 @{ name = 'reboot_count';           						    options = @('default')}
                 @{ name = 'serial_number';           						    options = @('default')}
-                @{ name = 'snmp_uptiime';           						    options = @('default')}
+                @{ name = 'snmp_uptime';           						    options = @('default')}
                 @{ name = 'ssid';           						    options = @('default')}
                 @{ name = 'syscontact';           						    options = @('default')}
                 @{ name = 'syslocation';           						    options = @('default')}
                 @{ name = 'upstream_device_id';           						    options = @('default')}
                 @{ name = 'upstream_port_index';           						    options = @('default')}
-            )
+    )
+    ApLog = @(
+                @{ name = 'id';           										options = @('default','key')}             
+                @{ name = 'date';           						        options = @('default')}
+                @{ name = 'message';           						    options = @('default')}
+                @{ name = 'user';           						    options = @('default')}
+    )
+    Folder = @(
+                @{ name = 'id';           										options = @('default','key')}             
+                @{ name = 'bandwidth_in';           										options = @('default')} 
+                @{ name = 'bandwidth_out';           									options = @('default')}    
+                @{ name = 'client_count';           									options = @('default')}    
+                @{ name = 'down';           								options = @('default')}
+                @{ name = 'mismatched';           							    options = @('default')}
+                @{ name = 'name';           						        options = @('default')}
+                @{ name = 'parent_id';           						    options = @('default')}
+                @{ name = 'up';           						    options = @('default')}
+                @{ name = 'vpn_client_count';           						    options = @('default')}
+    )
+    
 }
 
 #
@@ -194,6 +253,53 @@ function Idm-OnUnload {
 # Object CRUD functions
 #
 
+function Idm-ApDetailRead {
+    param (
+        # Mode
+        [switch] $GetMeta,    
+        # Parameters
+        [string] $SystemParams,
+        [string] $FunctionParams
+
+    )
+        $Class = "ApDetail"
+        $system_params   = ConvertFrom-Json2 $SystemParams
+
+        if ($GetMeta) {
+            Get-ClassMetaData -SystemParams $SystemParams -Class $Class
+            
+        } else {
+            Open-AirwaveConnection -system_params $System_params
+            $response = Get-AirwaveRequest -Method "GET" -Uri "$($system_params.hostname)/ap_detail.xml" -System_params $system_params
+
+            $properties = ($Global:Properties.$Class).name
+            $hash_table = [ordered]@{}
+
+            foreach ($prop in $properties.GetEnumerator()) {
+                $hash_table[$prop] = ""
+            }
+            
+            foreach($rowItem in $response.amp_ap_detail.ap.GetEnumerator()) {
+                
+                $row = New-Object -TypeName PSObject -Property $hash_table
+
+                foreach($prop in $rowItem.PSObject.properties) {
+                    if(@("radio","Name","LocalName","NamespaceURI","Prefix","NodeType","OwnerDocument","IsEmpty","Attributes","HasAttributes","SchemaInfo","InnerXML","InnerText","Value","ChildNodes","HasChildNodes","IsReadOnly","OuterXml","BaseURI","ParentNode","InnerXml","NextSibling","PreviousSibling","FirstChild","LastChild","PreviousText").Contains($prop.Name) ) { continue }
+
+                    if(!$properties.contains($prop.Name)) { 
+                        Log warn "$($prop.Name) not configured, skipping"
+                        continue
+                    }
+
+                     $row.($prop.Name) = $prop.Value
+
+                }
+
+                $row
+            } 
+        }
+}
+
 function Idm-ApListRead {
     param (
         # Mode
@@ -205,7 +311,6 @@ function Idm-ApListRead {
     )
         $Class = "ApList"
         $system_params   = ConvertFrom-Json2 $SystemParams
-        $function_params = ConvertFrom-Json2 $FunctionParams
 
         if ($GetMeta) {
             Get-ClassMetaData -SystemParams $SystemParams -Class $Class
@@ -244,19 +349,16 @@ function Idm-ApListRead {
                         continue
                     }
                     
+                    if(@("LocalName","NamespaceURI","Prefix","NodeType","OwnerDocument","IsEmpty","Attributes","HasAttributes","SchemaInfo","InnerXML","InnerText","Value","ChildNodes","HasChildNodes","IsReadOnly","OuterXml","BaseURI","ParentNode","InnerXml","NextSibling","PreviousSibling","FirstChild","LastChild","PreviousText").Contains($prop.Name) ) { continue }
+
                     if(!$properties.contains($prop.Name)) { 
-                        log warn "$($prop.Name) not configured, skipping"
+                        Log warn "$($prop.Name) not configured, skipping"
                         continue
                     }
 
-                    if($prop.Name -eq 'Date') {
-                        $row.($prop.Name) = try { ([datetime]::ParseExact($prop.Value, "MMM d, yyyy h:mmtt", $null)).ToString("yyyy-MM-dd HH:mm") } catch{}
-                    } else {
-                        $row.($prop.Name) = $prop.Value
-                    }
-                    
-                    
-                    }
+                     $row.($prop.Name) = $prop.Value
+
+                }
 
                 $row
             } 
@@ -277,7 +379,7 @@ function Get-AirwaveRequest {
     }
     
     try {
-        Log verbose "Retrieving [$($splat.Uri)]"
+        Log verbose "$($method) Call: $($splat.Uri)"
 
         if($system_params.use_proxy) {
                     
